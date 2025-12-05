@@ -13,7 +13,9 @@ import {
   ArrowRight,
   RefreshCw,
   Play,
-  Scissors
+  Scissors,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 // --- Types & Constants ---
@@ -214,6 +216,8 @@ const PuppetLeg = ({ colors = {} }: { colors?: ColorMap }) => (
 const App = () => {
   const [stage, setStage] = useState<Stage>('MENU');
   const [inventory, setInventory] = useState<string[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const addToInventory = (item: string) => {
     if (!inventory.includes(item)) {
@@ -221,9 +225,36 @@ const App = () => {
     }
   };
 
+  useEffect(() => {
+    if(audioRef.current) {
+      audioRef.current.volume = 0.5;
+    }
+  }, []);
+
+  const toggleMusic = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(e => console.log("Play failed:", e));
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
   const renderStage = () => {
     switch(stage) {
-      case 'MENU': return <MenuScreen onStart={() => setStage('INTRO')} />;
+      case 'MENU': return <MenuScreen onStart={() => { 
+        setStage('INTRO');
+        if (audioRef.current && !isPlaying) {
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+             playPromise
+               .then(() => setIsPlaying(true))
+               .catch(e => console.log("Autoplay blocked", e));
+          }
+        }
+      }} />;
       case 'INTRO': return <IntroScreen onNext={() => setStage('CH1_MAP')} />;
       case 'CH1_MAP': 
         return <Chapter1Map onComplete={() => {
@@ -266,6 +297,9 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-amber-50 text-amber-900 font-serif select-none overflow-hidden relative">
+      {/* Background Music: Guzheng - Fisherman's Song at Dusk */}
+      <audio ref={audioRef} loop src="https://upload.wikimedia.org/wikipedia/commons/5/5b/Guzheng_-_Fisherman%27s_Song_at_Dusk.ogg" crossOrigin="anonymous" />
+
       {/* Background Texture Overlay */}
       <div className="absolute inset-0 pointer-events-none opacity-10 bg-[url('https://www.transparenttextures.com/patterns/aged-paper.png')] z-0"></div>
       
@@ -275,7 +309,15 @@ const App = () => {
           <ScrollText className="w-5 h-5" />
           马王皮影工坊
         </h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <button 
+            onClick={toggleMusic} 
+            className="p-1.5 bg-amber-200 rounded-full hover:bg-amber-300 transition-colors mr-2 border border-amber-300"
+            title={isPlaying ? "关闭音乐" : "开启音乐"}
+          >
+             {isPlaying ? <Volume2 className="w-4 h-4 text-amber-900" /> : <VolumeX className="w-4 h-4 text-amber-900" />}
+          </button>
+
           {inventory.map((item, idx) => (
             <span key={idx} className="text-xs bg-amber-200 px-2 py-1 rounded-full border border-amber-300 animate-pulse">
               {item}
@@ -851,12 +893,6 @@ const RhythmGame = ({ onComplete }: { onComplete: () => void }) => {
              <div className="absolute top-[60%] left-[20%] w-[30%] h-[40%]"><PuppetLeg colors={{pants: PuppetColors.gold}}/></div>
              <div className="absolute top-[60%] right-[20%] w-[30%] h-[40%]"><PuppetLeg colors={{pants: PuppetColors.gold}}/></div>
         </div>
-
-        {combo > 10 && (
-          <div className="absolute top-10 text-yellow-400 font-bold text-3xl animate-ping border-4 border-yellow-500 px-4 py-2 rounded-lg bg-black/50">
-            绝活：喷火！🔥🔥🔥
-          </div>
-        )}
       </div>
 
       <div className="relative z-10 bg-gradient-to-t from-black via-black/80 to-transparent p-4">
